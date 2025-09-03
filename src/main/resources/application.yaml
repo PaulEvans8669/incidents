@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: incidents
+  data:
+    mongodb:
+      uri: mongodb://root:example@localhost:27017/incidentsdb?authSource=admin
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    ROOT: DEBUG

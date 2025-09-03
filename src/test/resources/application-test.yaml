@@ -1,0 +1,18 @@
+spring:
+  data:
+    mongodb:
+      database: test
+      port: 0
+server:
+  servlet:
+    context-path: /api
+
+logging:
+  level:
+    de.flapdoodle: DEBUG
+
+de:
+  flapdoodle:
+    mongodb:
+      embedded:
+        version: 4.4.18
