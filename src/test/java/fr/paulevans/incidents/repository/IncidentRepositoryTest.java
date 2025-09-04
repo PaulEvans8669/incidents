@@ -1,77 +1,104 @@
 package fr.paulevans.incidents.repository;
 
-
+import fr.paulevans.incidents.dto.IncidentSummaryDto;
 import fr.paulevans.incidents.model.Incident;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.data.mongo.DataMongoTest;
-import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 @DataMongoTest
-public class IncidentRepositoryTest {
-
-    @Value("${spring.profiles.active:default}")
-    String activeProfile;
-
-    @Autowired
-    private MongoTemplate mongoTemplate;
+class IncidentRepositoryTest {
 
     @Autowired
     private IncidentRepository incidentRepository;
 
+    private Incident incident;
+
     @BeforeEach
-    public void cleanDb() {
-        mongoTemplate.getDb().drop();  // Clear DB before each test
+    void setup() {
+        incident = new Incident(
+                "1",
+                "Title Example",
+                "Summary Example",
+                "High",
+                "OPEN",
+                "creator1",
+                Instant.now(),
+                null,
+                "Resolution Note",
+                Instant.now(),
+                List.of(new Incident.TimelineEvent("t1", Instant.now(), "Created", "user1")),
+                List.of(new Incident.Note("n1", "author1", "Note content", Instant.now())),
+                List.of("tag1", "tag2")
+        );
+        incidentRepository.save(incident);
     }
 
     @Test
-    public void testSaveIncident() {
-        // Create TimelineEvent and Note objects
-        Incident.TimelineEvent event0 = new Incident.TimelineEvent(
-                Instant.now(),
-                "REPORTED",
-                "user"
+    void testSaveIncident() {
+        Incident saved = incidentRepository.save(
+                new Incident(
+                        "2",
+                        "Another Title",
+                        "Another Summary",
+                        "Medium",
+                        "OPEN",
+                        "creator2",
+                        Instant.now(),
+                        null,
+                        null,
+                        null,
+                        List.of(),
+                        List.of(),
+                        List.of()
+                )
         );
-        Incident.TimelineEvent event1 = new Incident.TimelineEvent(
-                Instant.now(),
-                "Detected high CPU usage",
-                "monitoring-system"
-        );
 
-        Incident.Note note = new Incident.Note(
-                "engineer1",
-                "Investigating root cause",
-                Instant.now()
-        );
+        assertThat(saved.getId()).isEqualTo("2");
+        assertThat(incidentRepository.findById("2")).isPresent();
+    }
 
-        // Create Incident object
-        Incident incident = new Incident();
-        incident.setTitle("High CPU Usage");
-        incident.setSeverity("High");
-        incident.setStatus("Open");
-        incident.setTimeline(List.of(event0, event1));
-        incident.setNotes(List.of(note));
-        incident.setTags(List.of("cpu", "performance"));
-
-        // Save to MongoDB
-        Incident saved = incidentRepository.save(incident);
-
-        // Retrieve from MongoDB
-        Optional<Incident> found = incidentRepository.findById(saved.getId());
-
-        // Assertions
+    @Test
+    void testFindById() {
+        Optional<Incident> found = incidentRepository.findById("1");
         assertThat(found).isPresent();
-        assertThat(found.get().getTitle()).isEqualTo("High CPU Usage");
-        assertThat(found.get().getTimeline()).hasSize(2);
-        assertThat(found.get().getNotes()).hasSize(1);
-        assertThat(found.get().getTags()).contains("cpu");
+        assertThat(found.get().getTitle()).isEqualTo("Title Example");
+    }
+
+    @Test
+    void testFindAll() {
+        List<Incident> incidents = incidentRepository.findAll();
+        assertThat(incidents).hasSize(1);
+    }
+
+    @Test
+    void testDeleteIncident() {
+        incidentRepository.deleteById("1");
+        assertThat(incidentRepository.findById("1")).isEmpty();
+    }
+
+    @Test
+    void testExistsById() {
+        assertThat(incidentRepository.existsById("1")).isTrue();
+        assertThat(incidentRepository.existsById("999")).isFalse();
+    }
+
+    @Test
+    void testUpdateIncident() {
+        incident.setTitle("Updated Title");
+        Incident updated = incidentRepository.save(incident);
+
+        assertThat(updated.getTitle()).isEqualTo("Updated Title");
+        Optional<Incident> found = incidentRepository.findById("1");
+        assertThat(found.get().getTitle()).isEqualTo("Updated Title");
     }
 }

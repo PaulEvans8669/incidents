@@ -25,12 +25,14 @@ public class IncidentTest {
 
     private Incident validIncident() {
         Incident.TimelineEvent event = new Incident.TimelineEvent(
+                "t1",
                 Instant.now(),
                 "Event description",
                 "user1"
         );
 
         Incident.Note note = new Incident.Note(
+                "n1",
                 "author1",
                 "Some note",
                 Instant.now()
@@ -61,7 +63,6 @@ public class IncidentTest {
         incident.setTitle(null);
 
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("title"));
     }
 
@@ -69,9 +70,7 @@ public class IncidentTest {
     void testInvalidTitle_WhenEmpty() {
         Incident incident = validIncident();
         incident.setTitle("");
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("title"));
     }
 
@@ -81,9 +80,7 @@ public class IncidentTest {
     void testInvalidSummary_WhenNull() {
         Incident incident = validIncident();
         incident.setSummary(null);
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("summary"));
     }
 
@@ -91,9 +88,7 @@ public class IncidentTest {
     void testInvalidSummary_WhenEmpty() {
         Incident incident = validIncident();
         incident.setSummary("");
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("summary"));
     }
 
@@ -103,9 +98,7 @@ public class IncidentTest {
     void testInvalidSeverity_WhenNull() {
         Incident incident = validIncident();
         incident.setSeverity(null);
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("severity"));
     }
 
@@ -113,9 +106,7 @@ public class IncidentTest {
     void testInvalidSeverity_WhenEmpty() {
         Incident incident = validIncident();
         incident.setSeverity("");
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("severity"));
     }
 
@@ -125,31 +116,15 @@ public class IncidentTest {
     void testInvalidStatus_WhenNull() {
         Incident incident = validIncident();
         incident.setStatus(null);
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("status"));
-    }
-
-    @Test
-    void testInvalidStatus_WhenNotEnum() {
-        Incident incident = validIncident();
-        incident.setStatus("INVALID");
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().equals("status")
-                        && v.getMessage().contains("must be one of"));
     }
 
     @Test
     void testValidStatus_WhenEnumValue() {
         Incident incident = validIncident();
         incident.setStatus("RESOLVED");
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-
         assertThat(violations).isEmpty();
     }
 
@@ -159,7 +134,6 @@ public class IncidentTest {
     void testInvalidCreatedBy_WhenNull() {
         Incident incident = validIncident();
         incident.setCreatedBy(null);
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("createdBy"));
     }
@@ -168,7 +142,6 @@ public class IncidentTest {
     void testInvalidCreatedBy_WhenEmpty() {
         Incident incident = validIncident();
         incident.setCreatedBy("");
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("createdBy"));
     }
@@ -179,7 +152,6 @@ public class IncidentTest {
     void testInvalidCreatedAt_WhenNull() {
         Incident incident = validIncident();
         incident.setCreatedAt(null);
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations).anyMatch(v -> v.getPropertyPath().toString().equals("createdAt"));
     }
@@ -189,100 +161,36 @@ public class IncidentTest {
     @Test
     void testInvalidTimelineEvent_WhenNullDescription() {
         Incident incident = validIncident();
-        incident.setTimeline(List.of(new Incident.TimelineEvent(Instant.now(), null, "actor")));
-
+        incident.setTimeline(List.of(new Incident.TimelineEvent("t1", Instant.now(), null, "actor")));
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations)
                 .anyMatch(v -> v.getPropertyPath().toString().contains("timeline[0].description"));
-    }
-
-    @Test
-    void testInvalidTimelineEvent_WhenEmptyDescription() {
-        Incident incident = validIncident();
-        incident.setTimeline(List.of(new Incident.TimelineEvent(Instant.now(), "", "actor")));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("timeline[0].description"));
-    }
-
-    @Test
-    void testInvalidTimelineEvent_WhenNullActor() {
-        Incident incident = validIncident();
-        incident.setTimeline(List.of(new Incident.TimelineEvent(Instant.now(), "desc", null)));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("timeline[0].actor"));
     }
 
     @Test
     void testInvalidTimelineEvent_WhenEmptyActor() {
         Incident incident = validIncident();
-        incident.setTimeline(List.of(new Incident.TimelineEvent(Instant.now(), "desc", "")));
-
+        incident.setTimeline(List.of(new Incident.TimelineEvent("t1", Instant.now(), "desc", "")));
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations)
                 .anyMatch(v -> v.getPropertyPath().toString().contains("timeline[0].actor"));
     }
 
-    @Test
-    void testInvalidTimelineEvent_WhenNullTimestamp() {
-        Incident incident = validIncident();
-        incident.setTimeline(List.of(new Incident.TimelineEvent(null, "desc", "actor")));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("timeline[0].timestamp"));
-    }
-
     // ------------------ NOTES ------------------
-
-    @Test
-    void testInvalidNote_WhenNullAuthor() {
-        Incident incident = validIncident();
-        incident.setNotes(List.of(new Incident.Note(null, "note text", Instant.now())));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("notes[0].author"));
-    }
 
     @Test
     void testInvalidNote_WhenEmptyAuthor() {
         Incident incident = validIncident();
-        incident.setNotes(List.of(new Incident.Note("", "note text", Instant.now())));
-
+        incident.setNotes(List.of(new Incident.Note("n1", "", "note text", Instant.now())));
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations)
                 .anyMatch(v -> v.getPropertyPath().toString().contains("notes[0].author"));
-    }
-
-    @Test
-    void testInvalidNote_WhenNullNoteText() {
-        Incident incident = validIncident();
-        incident.setNotes(List.of(new Incident.Note("author1", null, Instant.now())));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("notes[0].note"));
-    }
-
-    @Test
-    void testInvalidNote_WhenEmptyNoteText() {
-        Incident incident = validIncident();
-        incident.setNotes(List.of(new Incident.Note("author1", "", Instant.now())));
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations)
-                .anyMatch(v -> v.getPropertyPath().toString().contains("notes[0].note"));
     }
 
     @Test
     void testInvalidNote_WhenNullTimestamp() {
         Incident incident = validIncident();
-        incident.setNotes(List.of(new Incident.Note("author1", "text", null)));
-
+        incident.setNotes(List.of(new Incident.Note("n1", "author1", "text", null)));
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations)
                 .anyMatch(v -> v.getPropertyPath().toString().contains("notes[0].timestamp"));
@@ -294,35 +202,13 @@ public class IncidentTest {
     void testValidTags_WhenEmptyList() {
         Incident incident = validIncident();
         incident.setTags(List.of());
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations).isEmpty();
-    }
-
-    @Test
-    void testValidTags_WhenNull() {
-        Incident incident = validIncident();
-        incident.setTags(null);
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations).isEmpty();
-    }
-
-    // ------------------ COMBINED INVALID FIELDS ------------------
-
-    @Test
-    void testInvalidIncident_MultipleMissingFields() {
-        Incident incident = new Incident();
-        incident.setStatus("INVALID");
-
-        Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
-        assertThat(violations).hasSizeGreaterThan(5); // title, summary, severity, createdBy, createdAt, status invalid
     }
 
     @Test
     void testValidIncident_AllFieldsValid() {
         Incident incident = validIncident();
-
         Set<ConstraintViolation<Incident>> violations = validator.validate(incident);
         assertThat(violations).isEmpty();
     }

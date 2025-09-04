@@ -1,6 +1,7 @@
 package fr.paulevans.incidents.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import fr.paulevans.incidents.exceptions.IncidentValidationException;
 import fr.paulevans.incidents.model.Incident;
 import fr.paulevans.incidents.service.IncidentService;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,9 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -50,8 +53,8 @@ public class IncidentControllerTest {
                 null,
                 "Resolution Note",
                 Instant.now(),
-                List.of(new Incident.TimelineEvent(Instant.now(), "Created", "user1")),
-                List.of(new Incident.Note("author1", "note content", Instant.now())),
+                List.of(new Incident.TimelineEvent("t1", Instant.now(), "Created", "user1")),
+                List.of(new Incident.Note("n1", "author1", "note content", Instant.now())),
                 List.of("tag1", "tag2")
         );
     }
@@ -178,50 +181,65 @@ public class IncidentControllerTest {
         verify(incidentService).getAllIncidents();
     }
 
-    // ------------------ UPDATE ------------------
+    // ------------------ UPDATE / PATCH ------------------
 
     @Test
     void testUpdateIncident_WhenTitleChanged_ShouldReturnOk() throws Exception {
-        Incident updated = new Incident(validIncident.getId(), "New Title", validIncident.getSummary(),
-                validIncident.getSeverity(), validIncident.getStatus(),
-                validIncident.getCreatedBy(), validIncident.getCreatedAt(),
-                Instant.now(), validIncident.getResolutionNote(), validIncident.getResolvedAt(),
-                validIncident.getTimeline(), validIncident.getNotes(), validIncident.getTags());
+        Incident updatedIncident = new Incident(
+                validIncident.getId(),
+                "New Title",
+                validIncident.getSummary(),
+                validIncident.getSeverity(),
+                validIncident.getStatus(),
+                validIncident.getCreatedBy(),
+                validIncident.getCreatedAt(),
+                Instant.now(),
+                validIncident.getResolutionNote(),
+                validIncident.getResolvedAt(),
+                validIncident.getTimeline(),
+                validIncident.getNotes(),
+                validIncident.getTags()
+        );
 
-        when(incidentService.existsById("1")).thenReturn(true);
-        when(incidentService.saveIncident(any())).thenReturn(updated);
+        when(incidentService.getIncidentById("1")).thenReturn(validIncident);
+        when(incidentService.patchIncident(eq(validIncident), any(Map.class)))
+                .thenReturn(updatedIncident);
 
-        mockMvc.perform(put("/incidents/1")
+        mockMvc.perform(patch("/incidents/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(updated)))
+                        .content(objectMapper.writeValueAsString(Map.of("title", "New Title"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.title").value("New Title"));
 
-        verify(incidentService).saveIncident(any());
+        verify(incidentService).patchIncident(eq(validIncident), any(Map.class));
     }
 
     @Test
     void testUpdateIncident_WhenIdNotFound_ShouldReturnNotFound() throws Exception {
-        when(incidentService.existsById("999")).thenReturn(false);
+        when(incidentService.getIncidentById("999"))
+                .thenThrow(new NoSuchElementException("Incident not found with id: 999"));
 
-        mockMvc.perform(put("/incidents/999")
+        mockMvc.perform(patch("/incidents/999")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validIncident)))
+                        .content(objectMapper.writeValueAsString(Map.of("title", "New Title"))))
                 .andExpect(status().isNotFound());
 
-        verify(incidentService, never()).saveIncident(any());
+        verify(incidentService).getIncidentById("999");
+        verify(incidentService, never()).patchIncident(any(), any());
     }
 
     @Test
     void testUpdateIncident_WhenStatusInvalid_ShouldReturnBadRequest() throws Exception {
-        validIncident.setStatus("INVALID");
-        when(incidentService.existsById("1")).thenReturn(true);
+        when(incidentService.getIncidentById("1")).thenReturn(validIncident);
+        when(incidentService.patchIncident(eq(validIncident), any(Map.class)))
+                .thenThrow(new IncidentValidationException(Set.of()));
 
-        mockMvc.perform(put("/incidents/1")
+        mockMvc.perform(patch("/incidents/1")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validIncident)))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.details[?(@ =~ /status:.*/)]").exists());
+                        .content(objectMapper.writeValueAsString(Map.of("status", "INVALID"))))
+                .andExpect(status().isBadRequest());
+
+        verify(incidentService).patchIncident(eq(validIncident), any(Map.class));
     }
 
     // ------------------ DELETE ------------------
@@ -266,7 +284,7 @@ public class IncidentControllerTest {
 
     @Test
     void testCreateIncident_WhenTimelineEventInvalid_ShouldReturnBadRequest() throws Exception {
-        validIncident.setTimeline(List.of(new Incident.TimelineEvent(null, "", "")));
+        validIncident.setTimeline(List.of(new Incident.TimelineEvent(null, null, "", "")));
 
         mockMvc.perform(post("/incidents")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -292,7 +310,7 @@ public class IncidentControllerTest {
 
     @Test
     void testCreateIncident_WhenNoteInvalid_ShouldReturnBadRequest() throws Exception {
-        validIncident.setNotes(List.of(new Incident.Note("", "", null)));
+        validIncident.setNotes(List.of(new Incident.Note(null, "", "", null)));
 
         mockMvc.perform(post("/incidents")
                         .contentType(MediaType.APPLICATION_JSON)

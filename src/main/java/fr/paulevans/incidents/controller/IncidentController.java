@@ -1,11 +1,15 @@
 package fr.paulevans.incidents.controller;
 
 
+import fr.paulevans.incidents.dto.IncidentSummaryDto;
 import fr.paulevans.incidents.model.Incident;
 import fr.paulevans.incidents.service.IncidentService;
 import fr.paulevans.incidents.service.IncidentUpdateService;
+import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Valid;
+import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -20,6 +24,9 @@ import java.util.*;
 @RequiredArgsConstructor
 public class IncidentController {
 
+    @Autowired
+    private Validator validator;
+
     private final IncidentService incidentService;
 
     private final IncidentUpdateService incidentUpdateService;
@@ -27,6 +34,11 @@ public class IncidentController {
     @GetMapping
     public List<Incident> getAllIncidents() {
         return incidentService.getAllIncidents();
+    }
+
+    @GetMapping("/summaries")
+    public List<IncidentSummaryDto> getIncidentSummaries() {
+        return incidentService.getAllIncidentSummaries();
     }
 
     @GetMapping("/{id}")
@@ -51,37 +63,16 @@ public class IncidentController {
     public ResponseEntity<Incident> patchIncident(
             @PathVariable String id,
             @RequestBody Map<String, Object> updates) {
-        if (!incidentService.existsById(id)) {
+
+        Incident incident;
+        try {
+            incident = incidentService.getIncidentById(id);
+        } catch (NoSuchElementException e) {
             return ResponseEntity.notFound().build();
         }
-        Incident incident = incidentService.getIncidentById(id);
 
-        Map<String, Map<String, Object>> changes = new HashMap<>();
-
-        updates.forEach((field, newValue) -> {
-            try {
-                Field f = Incident.class.getDeclaredField(field);
-                f.setAccessible(true);
-                Object oldValue = f.get(incident);
-
-                // Only update if different
-                if (!Objects.equals(oldValue, newValue)) {
-                    f.set(incident, convertValueToFieldType(f, newValue));
-                    Map<String, Object> changeEntry = new HashMap<>();
-                    changeEntry.put("old", oldValue);
-                    changeEntry.put("new", newValue);
-                    changes.put(field, changeEntry);
-                }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                throw new IllegalArgumentException("Field " + field + " not found or inaccessible");
-            }
-        });
-
-        incident.setId(id); // ensure the ID is not changed
-        incident.setUpdatedAt(Instant.now());
-        incidentUpdateService.saveIncidentUpdate(id, changes);
-
-        return ResponseEntity.ok(incidentService.saveIncident(incident));
+        Incident updatedIncident = incidentService.patchIncident(incident, updates);
+        return ResponseEntity.ok(updatedIncident);
     }
 
     @DeleteMapping("/{id}")
