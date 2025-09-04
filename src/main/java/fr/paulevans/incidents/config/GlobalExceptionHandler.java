@@ -1,5 +1,6 @@
 package fr.paulevans.incidents.config;
 
+import fr.paulevans.incidents.exceptions.IncidentValidationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,6 +20,21 @@ public class GlobalExceptionHandler {
                         .getFieldErrors()
                         .stream()
                         .map(fe -> fe.getField() + ": " + fe.getDefaultMessage())
+                        .toList()
+        );
+
+        return ResponseEntity.badRequest().body(body);
+
+    }
+
+    @ExceptionHandler(IncidentValidationException.class)
+    public ResponseEntity<Map<String, Object>> handleIncidentValidation(
+            IncidentValidationException ex) {
+
+        Map<String, Object> body = Map.of(
+                "details", ex.getViolations()
+                        .stream()
+                        .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                         .toList()
         );
 
